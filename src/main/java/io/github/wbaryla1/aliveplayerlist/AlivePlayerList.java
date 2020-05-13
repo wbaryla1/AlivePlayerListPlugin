@@ -27,6 +27,7 @@ public final class AlivePlayerList extends JavaPlugin implements Listener {
     @Override
     public void onDisable() {
         // Plugin shutdown logic
+        removeDuplicates();
     }
 
     @Override
@@ -38,13 +39,23 @@ public final class AlivePlayerList extends JavaPlugin implements Listener {
             }
 
             Player player = (Player)sender;
-            Team team = player.getScoreboard().getPlayerTeam(player);
-            System.out.println(args.length);
 
-            List<String> list = new ArrayList<String>();
+            if (args.length == 0) {
+                player.sendMessage(convertList());
+                return true;
+            }
+            else {
+                Team team = this.getServer().getScoreboardManager().getMainScoreboard().getTeam(args[0]);
+                List<String> players = this.getConfig().getStringList("players." + team.getName());
+                List<String> names = new ArrayList<String>();
+                for (String s : players) {
+                    names.add(team.getColor() + s);
+                }
 
-            player.sendMessage(convertList());
-            return true;
+                if (names.size() > 0)
+                    player.sendMessage(String.join(", ", names));
+                return true;
+            }
         }
         return false;
     }
@@ -59,7 +70,7 @@ public final class AlivePlayerList extends JavaPlugin implements Listener {
                 if (getConfig().getStringList("players." + team.getName()).contains(p.getName())) {
                     List<String> list = getConfig().getStringList("players." + team.getName());
                     list.remove(p.getName());
-                    getConfig().set("players", list);
+                    getConfig().set("players." + team.getName(), list);
                     saveConfig();
                 }
             } else {
@@ -73,6 +84,8 @@ public final class AlivePlayerList extends JavaPlugin implements Listener {
                 }
             }
         }
+
+        removeDuplicates();
     }
 
     @EventHandler
@@ -80,19 +93,22 @@ public final class AlivePlayerList extends JavaPlugin implements Listener {
         Player p = event.getEntity();
         Team t = p.getScoreboard().getPlayerTeam(p);
 
+        removeDuplicates();
+
         if (getConfig().getStringList("players." + t.getName()).contains(p.getName())) {
             List<String> list = getConfig().getStringList("players." + t.getName());
             list.remove(p.getName());
             getConfig().set("players." + t.getName(), list);
             saveConfig();
         }
+
+        removeDuplicates();
     }
 
     public String convertList() {
         List<String> names = new ArrayList<String>();
 
         Set<Team> teams = this.getServer().getScoreboardManager().getMainScoreboard().getTeams();
-
 
         for (Team t : teams) {
             List<String> players = this.getConfig().getStringList("players." + t.getName());
@@ -104,14 +120,30 @@ public final class AlivePlayerList extends JavaPlugin implements Listener {
         return String.join(", ", names);
     }
 
-//    public void removeDuplicates() {
-//        Set<Team> teams = this.getServer().getScoreboardManager().getMainScoreboard().getTeams();
-//        Set<String> names;
-//
-//        for (Team t : teams) {
-//            for (String s : getConfig().getStringList("players." + t.getName())) {
-//                names.add(s);
-//            }
-//        }
-//    }
+    public void removeDuplicates() {
+        Set<Team> teams = this.getServer().getScoreboardManager().getMainScoreboard().getTeams();
+        Set<String> names = new HashSet<String>();
+
+        for (Team t : teams) {
+            for (String s : getConfig().getStringList("players." + t.getName())) {
+                if (!names.contains(s)) {
+                    names.add(s);
+                }
+            }
+        }
+
+        getConfig().set("players", "");
+        List<String> newList = new ArrayList<String>();
+
+        for (String s : names) {
+            for (Team t : teams) {
+                if (t.getEntries().contains(s)){
+                    List<String> omegaList = getConfig().getStringList("players." + t.getName());
+                    omegaList.add(s);
+                    getConfig().set("players." + t.getName(), omegaList);
+                    saveConfig();
+                }
+            }
+        }
+    }
 }
