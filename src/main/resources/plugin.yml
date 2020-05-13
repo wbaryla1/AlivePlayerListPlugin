@@ -1,0 +1,10 @@
+name: AlivePlayerList
+version: ${project.version}
+main: io.github.wbaryla1.aliveplayerlist.AlivePlayerList
+api-version: 1.15
+authors: [Kekdrick]
+description: Makes a list of alive players based on who's online
+
+commands:
+  alivelist:
+    usage: /alivelist
