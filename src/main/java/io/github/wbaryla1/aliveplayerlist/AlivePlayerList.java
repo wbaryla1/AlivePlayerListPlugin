@@ -121,6 +121,7 @@ public final class AlivePlayerList extends JavaPlugin implements Listener {
     }
 
     public void removeDuplicates() {
+        // needed for when someone gets promoted, that they aren't recorded under both Acolyte + Brother
         Set<Team> teams = this.getServer().getScoreboardManager().getMainScoreboard().getTeams();
         Set<String> names = new HashSet<String>();
 
