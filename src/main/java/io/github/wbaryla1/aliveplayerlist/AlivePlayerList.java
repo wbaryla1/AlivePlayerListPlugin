@@ -1,10 +1,12 @@
 package io.github.wbaryla1.aliveplayerlist;
 
+import com.Alvaeron.api.RPEngineAPI;
+import com.Alvaeron.player.RoleplayPlayer;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
-import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -53,7 +55,7 @@ public final class AlivePlayerList extends JavaPlugin implements Listener {
                 }
 
                 if (names.size() > 0)
-                    player.sendMessage(String.join(", ", names));
+                    player.sendMessage(String.join(ChatColor.WHITE + ", ", names));
                 return true;
             }
         }
@@ -67,20 +69,18 @@ public final class AlivePlayerList extends JavaPlugin implements Listener {
 
         if (team != null) {
             if (p.isDead()) {
-                if (getConfig().getStringList("players." + team.getName()).contains(p.getName())) {
+                if (getConfig().getStringList("players." + team.getName()).contains(p.getUniqueId().toString())) {
                     List<String> list = getConfig().getStringList("players." + team.getName());
-                    list.remove(p.getName());
+                    list.remove(p.getUniqueId().toString());
                     getConfig().set("players." + team.getName(), list);
                     saveConfig();
                 }
             } else {
-                if (team != null) {
-                    if (!getConfig().getStringList("players." + team.getName()).contains(p.getName())) {
-                        List<String> list = getConfig().getStringList("players." + team.getName());
-                        list.add(p.getName());
-                        getConfig().set("players." + team.getName(), list);
-                        saveConfig();
-                    }
+                if (!getConfig().getStringList("players." + team.getName()).contains(p.getUniqueId().toString())) {
+                    List<String> list = getConfig().getStringList("players." + team.getName());
+                    list.add(p.getUniqueId().toString());
+                    getConfig().set("players." + team.getName(), list);
+                    saveConfig();
                 }
             }
         }
@@ -93,11 +93,11 @@ public final class AlivePlayerList extends JavaPlugin implements Listener {
         Player p = event.getEntity();
         Team t = p.getScoreboard().getPlayerTeam(p);
 
-        removeDuplicates();
-
-        if (getConfig().getStringList("players." + t.getName()).contains(p.getName())) {
+        assert t != null;
+        if (getConfig().getStringList("players." + t.getName()).contains(p.getUniqueId().toString())) {
+            System.out.println("Found player");
             List<String> list = getConfig().getStringList("players." + t.getName());
-            list.remove(p.getName());
+            list.remove(p.getUniqueId().toString());
             getConfig().set("players." + t.getName(), list);
             saveConfig();
         }
@@ -108,29 +108,27 @@ public final class AlivePlayerList extends JavaPlugin implements Listener {
     public String convertList() {
         List<String> names = new ArrayList<String>();
 
-        Set<Team> teams = this.getServer().getScoreboardManager().getMainScoreboard().getTeams();
+        Set<Team> teams = Objects.requireNonNull(this.getServer().getScoreboardManager()).getMainScoreboard().getTeams();
 
         for (Team t : teams) {
             List<String> players = this.getConfig().getStringList("players." + t.getName());
             for (String s : players) {
-                names.add(t.getColor() + s);
+                RoleplayPlayer rp = RPEngineAPI.getRoleplayPlayer(UUID.fromString(s));
+                System.out.println(rp.getName());
+                names.add(t.getColor() + rp.getName() + "(" + rp.getPlayerName() + ")");
             }
         }
 
-        return String.join(", ", names);
+        return String.join(ChatColor.WHITE + ", ", names);
     }
 
     public void removeDuplicates() {
         // needed for when someone gets promoted, that they aren't recorded under both Acolyte + Brother
-        Set<Team> teams = this.getServer().getScoreboardManager().getMainScoreboard().getTeams();
+        Set<Team> teams = Objects.requireNonNull(this.getServer().getScoreboardManager()).getMainScoreboard().getTeams();
         Set<String> names = new HashSet<String>();
 
         for (Team t : teams) {
-            for (String s : getConfig().getStringList("players." + t.getName())) {
-                if (!names.contains(s)) {
-                    names.add(s);
-                }
-            }
+            names.addAll(getConfig().getStringList("players." + t.getName()));
         }
 
         getConfig().set("players", "");
@@ -138,7 +136,8 @@ public final class AlivePlayerList extends JavaPlugin implements Listener {
 
         for (String s : names) {
             for (Team t : teams) {
-                if (t.getEntries().contains(s)){
+                OfflinePlayer player = Bukkit.getOfflinePlayer(UUID.fromString(s));
+                if (t.getEntries().contains(player.getName())){
                     List<String> omegaList = getConfig().getStringList("players." + t.getName());
                     omegaList.add(s);
                     getConfig().set("players." + t.getName(), omegaList);
